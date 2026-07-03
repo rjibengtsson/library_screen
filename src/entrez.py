@@ -1,9 +1,13 @@
+from typing import Dict
+from pathlib import Path
 from Bio import Entrez, SeqIO
 from Bio.SeqRecord import SeqRecord
+from Bio.SeqFeature import CompoundLocation
 
-email = "rebecca.bengtsson@unimelb.edu.au"
 
-def fetch_gbk(accession_number):
+email = ""
+
+def fetch_gbk(accession_number) -> Path:
     Entrez.email = email
     handle = Entrez.efetch(db="nucleotide", id=accession_number, rettype="gb", retmode="text")
     record = SeqIO.read(handle, "genbank")
@@ -11,7 +15,7 @@ def fetch_gbk(accession_number):
     return record
 
 
-def fetch_fasta(accession_number):
+def fetch_fasta(accession_number) -> Path:
     Entrez.email = email
     handle = Entrez.efetch(db="nucleotide", id=accession_number, rettype="fasta", retmode="text")
     record = SeqIO.read(handle, "fasta")
@@ -19,60 +23,41 @@ def fetch_fasta(accession_number):
     return record
 
 
-def fetch_gene_coordinates(genbank_file_path, gene_name=None, feature_type="gene"):
-    """Return feature coordinates from a local GenBank file.
+def get_feature_locations(genbank_file_path) -> Dict:
 
-    Parameters
-    ----------
-    genbank_file_path : str or Path
-        Path to a local GenBank file.
-    gene_name : str, optional
-        Filter by the 'gene' qualifier value. Leave as None to return all
-        features of the given type.
-    feature_type : str
-        GenBank feature type to search (default ``"gene"``). Pass e.g.
-        ``"5'UTR"``, ``"3'UTR"``, or ``"CDS"`` for other feature types.
+    """Return dictionary of feature and location."""
 
-    Returns
-    -------
-    list of dict with keys: feature_type, gene, start, end, strand
-    """
-    with open(genbank_file_path) as f:
-        record = SeqIO.read(f, "genbank")
-    results = {}
-    for feature in record.features:
-        if feature.type != feature_type:
-            continue
-        name = feature.qualifiers.get("gene", [None])[0]
-        if gene_name is not None and name != gene_name:
-            continue
-        results = {
-            "accession": record.id,
-            "feature_type": feature.type,
-            "gene": name,
-            "start": int(feature.location.start),
-            "end": int(feature.location.end),
-            "strand": feature.location.strand,
-        }
-    return results
+    feature_types = {}
+    count = 0
+    for record in SeqIO.parse(genbank_file_path, "genbank"):
+        for feature in record.features:
+            if feature.type == 'CDS':
+                gene = feature.qualifiers.get("gene", [None])[0]
+                if gene is None:
+                    continue
+                if len(feature.location.parts) > 1:
+                    for part in feature.location.parts:
+                        start = part.start.position
+                        end = part.end.position
+                        count += 1
+                        gene_name = f"{gene}_{count}"
+                        feature_types[gene_name] = {"start": start, "end": end}
+                else:
+                    start = feature.location.start.position
+                    end = feature.location.end.position
+                    feature_types[gene] = {"start": start, "end": end}
+    return feature_types
 
 
-def save_record(record, type, fasta_file_path, output_dir):
-    """
-    Extract fasta sequence from GenBank record and save to file.
-    """
-    gene_name = record.get(type)
-    record_id = record.get("accession")
-    start = record.get('start')
-    end = record.get('end')
 
-    output_file_path = output_dir / f"{record_id}_{gene_name}.fasta"
+def fetch_gene_sequence(feature, start, end, fasta_file_path, output_dir) -> Path:
     
-    # Write the extracted sequence to a new FASTA file
+    """Fetch gene sequences from FASTA files."""
+    output_file_path = output_dir / f"{feature}.fasta"
     with open(output_file_path, "w") as f:
         for record in SeqIO.parse(fasta_file_path, "fasta"):
             record_seq = record.seq[start:end]
             extracted_record = SeqRecord(seq=record_seq, 
-                                         id=f"{record.id}_{gene_name}",
+                                         id=f"{feature}",
                                          description="")
             SeqIO.write(extracted_record, f, "fasta")
