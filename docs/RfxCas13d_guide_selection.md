@@ -31,46 +31,6 @@ python3 scripts/get_guide_seq.py -csv data/raw/NC_019843.3/closest_guides.csv -i
 ```
 
 
-## Pan-SarbeCoV N guides
-
-Identify RfxCas13b guides predicted to be highly efficient (TIGER) that target overlapping genomic regions as PspCas13b guides directed against SarbeCoV nucleocapsid protein.
-
-Will be mapping the SarbeCoV N guides against MERS genome (NC_019843.3). Because this is pan SarbeCoV, guides will have mismatch, so set percentage identity to 90.
-
-```bash
-# python3 scripts/get_guide_positions.py -b data/Pan-SarbeCoV_PspCas13b_guides.xlsx -d data/MERS_RfxCas13d_TIGER.xlsx -db data/raw/NC_019843.3/NC_019843.3_subgenomic.fasta -o data/raw/ -p 90 -c 40
-
-blastn -query data/raw/NC_019843.3/PspCas13b_query.fasta -db data/raw/NC_019843.3/NC_019843.3_subgenomic
-
-
-blastn \
-  -query PspCas13b_query.fasta \
-  -db N \
-  -task blastn-short \
-  -perc_identity 70 \
-  -word_size 6 \
-  -gapopen 0 \
-  -gapextend 2 \
-  -penalty -1 \
-  -reward 1 \
-  -qcov_hsp_perc 80 \
-  -max_target_seqs 100 \
-  -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore" \
-  -out panSarbeCoV_N_blastn.txt
-
-
-
-```
-
-Filter for best PspCas13b guide hits (selecting highest bitscore)
-
-```bash
-python3 src/bedtools_closest.py -a data/raw/MT007544.1/PspCas13b_guides.bed -b data/raw/MT007544.1/RfxCas13d_guides.bed -o results -f SARS-CoV-2_guides.html
-```
-
-
-
-
 ## SARS-CoV-2
 
 The same pipeline was used to identify guides predicted to be most potent for RfxCas13d targeting SARS-CoV-2, and closest in position to previously tested PspCas13b guides.
