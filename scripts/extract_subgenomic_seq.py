@@ -46,11 +46,10 @@ def main():
     fasta_file_path = output_dir / f"{accession}.fasta"
 
     # #### Step 1 - Download MERS genomes from NCBI
-    fetch_files(accession, gbk_file_path, fasta_file_path)
+    # fetch_files(accession, gbk_file_path, fasta_file_path)
 
     feature_locations = entrez.get_feature_locations(gbk_file_path)
-
-
+    
     #### Step 2 - Extract feature coordinates and save to file
     feature_list = [feature for feature in feature_locations.keys()]
     for feature in feature_list:

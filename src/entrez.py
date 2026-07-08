@@ -29,12 +29,17 @@ def get_feature_locations(genbank_file_path) -> Dict:
 
     feature_types = {}
     count = 0
+    exclude_feature_types = ['gene', 'mat_peptide', 'source']
+
     for record in SeqIO.parse(genbank_file_path, "genbank"):
         for feature in record.features:
-            if feature.type == 'CDS':
+            if feature.type not in exclude_feature_types:
                 gene = feature.qualifiers.get("gene", [None])[0]
                 if gene is None:
-                    continue
+                    gene = feature.type
+                    start = feature.location.start.position
+                    end = feature.location.end.position
+                    feature_types[gene] = {"start": start, "end": end}
                 if len(feature.location.parts) > 1:
                     for part in feature.location.parts:
                         start = part.start.position

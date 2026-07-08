@@ -1,5 +1,4 @@
 import os
-
 from Bio import SeqIO
 from pathlib import Path
 import sys
@@ -7,15 +6,34 @@ import argparse
 import subprocess
 import pybedtools
 import utils as utils
+import visualisation as visualisation
 
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Find closest features between BED files")
-    parser.add_argument("-a", help="PspCas13b BED file", type=str, required=True)
-    parser.add_argument("-b", help="RxfCas13d BED file", type=str, required=True)
-    parser.add_argument("-o", help="Output directory", type=str, required=True)
-    parser.add_argument("-f", help="Output file name", type=str, default="closest_features.html")
+
+    # Required arguments
+    required = parser.add_argument_group('required arguments')
+    required.add_argument("-a", 
+                          type=str, required=True,
+                          help="PspCas13b BED file", )
+    required.add_argument("-b", 
+                          type=str, required=True,
+                          help="RfxCas13d BED file")
+    required.add_argument("-o", 
+                          type=str, required=True,
+                          help="Output directory")
+    
+    
+    # Optional arguments
+    optional = parser.add_argument_group('optional arguments')
+    optional.add_argument("-f", 
+                          type=str, default=None,
+                          help="Output file name")
+    optional.add_argument("-w", 
+                          type=int, default=None,
+                          help="Filter by window size in bp (50bp default)")
     return parser.parse_args()
     
 
@@ -35,7 +53,7 @@ def filter_guide_score(query_file, threshold=0.8):
 
 
 def run_bedtools_closest(query_sorted, subject_sorted):
-    closest = query_sorted.closest(subject_sorted, d=True)
+    closest = query_sorted.closest(subject_sorted, t="all", d=True)
     return closest
 
 
@@ -46,7 +64,7 @@ def filter_results(closest_features):
     df = closest_features.to_dataframe(names=["gene", "qstart", "qend", "PspCas13b index", 
                                               "PspCas13b guide seq", "PspCas13b target seq",
                                               "closest_chrom", "sstart", "send",
-                                              "RxfCas13d index", "RxfCas13d guide seq", "RxfCas13d target seq", 
+                                              "RfxCas13d index", "RfxCas13d guide seq", "RfxCas13d target seq", 
                                               "guide score", "distance"])
     
 
@@ -55,8 +73,8 @@ def filter_results(closest_features):
 
     # Change column order to match the desired output
     df = df[["gene", "PspCas13b index", "qstart", "qend", "PspCas13b guide seq", "PspCas13b target seq",
-             "RxfCas13d index", "sstart", "send",
-             "RxfCas13d guide seq", "RxfCas13d target seq", "guide score", "distance"]]  
+             "RfxCas13d index", "sstart", "send",
+             "RfxCas13d guide seq", "RfxCas13d target seq", "guide score", "distance"]]  
     
     # select top 10 for each group based on distance and score
     df_filt = (df.sort_values(by=["distance", "guide score"], ascending=[True, False])
@@ -70,8 +88,8 @@ def filter_results(closest_features):
 
 def main():
     args = parse_args()
-    bed_file1 = Path(args.a) #PspCas13b BED file
-    bed_file2 = Path(args.b) #RxfCas13d BED file
+    bed_file1 = Path(args.a) # PspCas13b BED file
+    bed_file2 = Path(args.b) # RfxCas13d BED file
     output_dir = Path(args.o)
 
     ### Sort the BED files
@@ -81,21 +99,34 @@ def main():
     ### Filter the first BED file based on guide score
     filt_srt_bed2 = filter_guide_score(sorted_bed2, threshold=0.8)
 
+    if args.w is not None:
+        window_size = args.w
+        nearby = sorted_bed1.window(filt_srt_bed2, w=window_size)
+        filtered_results = filter_results(nearby)
+        
+        ### Save the filtered results to a CSV file
+        bedfile_dir = Path(os.path.dirname(bed_file1))
+        output_file = bedfile_dir / f"closest_guides_{args.w}bp.csv"
+        # print(f"Saving filtered results to {output_file}")
+        filtered_results.to_csv(output_file, index=False)
 
-    ### Get closest coordinates
-    closest_features = run_bedtools_closest(sorted_bed1, filt_srt_bed2)
+    
+    else:
+        ### Get closest coordinates
+        closest_features = run_bedtools_closest(sorted_bed1, filt_srt_bed2)
 
-    # ### Sort the closest features by distance (last column and score)
-    filtered_results = filter_results(closest_features)
+        ### Sort the closest features by distance (last column and score)
+        filtered_results = filter_results(closest_features)
+    
+        ### Save the filtered results to a CSV file
+        bedfile_dir = Path(os.path.dirname(bed_file1))
+        output_file = bedfile_dir / "closest_guides.csv"
+        filtered_results.to_csv(output_file, index=False)
 
-    ### Save the filtered results to a CSV file
-    bedfile_dir = Path(os.path.dirname(bed_file1))
-    output_file = bedfile_dir / "closest_guides.csv"
-    # filtered_results.to_csv(output_file, index=False)
 
-    ### Visualize the results
-    outfile_name = args.f
-    fig = utils.visualize_guide_proximity(filtered_results, output_dir, outfile_name)
+    # ### Visualize the results
+    # outfile_name = args.f
+    # fig = visualisation.visualize_guide_proximity(filtered_results, output_dir, bed_file1, outfile_name)
 
 
 if __name__ == "__main__":
