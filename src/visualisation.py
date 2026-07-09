@@ -9,6 +9,8 @@ import plotly.graph_objects as go
 import plotly.io as pio
 from plotly.subplots import make_subplots
 import entrez as entrez
+from pathlib import Path
+import numpy as np
 
 
 def get_gene_length(gene_coords_dict):
@@ -25,6 +27,7 @@ def visualize_guide_proximity(df, output_dir, bed_file_path,
 
     # Get gene coordinates from Entrez
     acession = Path(bed_file_path).parts[-2]
+
     gbk_dir_path = os.path.dirname(bed_file_path)
     gbk_file_path = os.path.join(gbk_dir_path, f"{acession}.gbk")
     gene_coords = entrez.get_feature_locations(gbk_file_path)

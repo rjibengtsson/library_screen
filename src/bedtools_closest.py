@@ -124,9 +124,9 @@ def main():
         filtered_results.to_csv(output_file, index=False)
 
 
-    # ### Visualize the results
-    # outfile_name = args.f
-    # fig = visualisation.visualize_guide_proximity(filtered_results, output_dir, bed_file1, outfile_name)
+    ### Visualize the results
+    outfile_name = args.f
+    fig = visualisation.visualize_guide_proximity(filtered_results, output_dir, bed_file1, outfile_name)
 
 
 if __name__ == "__main__":

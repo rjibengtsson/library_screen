@@ -45,6 +45,7 @@ def get_guide_sequences(csv_file: Path, input_file: Path, output_file: Path) -> 
     # Filter the DataFrame to include only the specified indices
     filtered_df = df[df['RfxCas13d index'].isin(indices)]
 
+
     # Wrtie output to a csv file
     result_df = filtered_df[['RfxCas13d index', 'RfxCas13d guide seq', 
                              'PspCas13b guide seq', 'gene', 'guide score']]
@@ -70,6 +71,7 @@ def main():
     output_file = Path(args.output_file)
     # Get the guide sequences
     get_guide_sequences(csv_file, input_file, output_file)
+    
 
 
 if __name__ == "__main__":
